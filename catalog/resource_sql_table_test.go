@@ -1264,6 +1264,187 @@ func TestResourceSqlTableUpdateTable_DropMultipleColumns(t *testing.T) {
 	)
 }
 
+func TestResourceSqlTableUpdateTable_InsertSingleColumn(t *testing.T) {
+	resourceSqlTableUpdateColumnHelper(t,
+		resourceSqlTableUpdateColumnTestMetaData{
+			oldColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "four",
+					Type: "string",
+				},
+			},
+			newColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "three", // new column
+					Type: "string",
+				},
+				{
+					Name: "four",
+					Type: "string",
+				},
+			},
+			allowedCommands: []string{
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMN `three` string NOT NULL AFTER two",
+			},
+			expectedErrorMsg: "",
+		},
+	)
+}
+
+func TestResourceSqlTableUpdateTable_InsertMultipleColumnsInARow(t *testing.T) {
+	resourceSqlTableUpdateColumnHelper(t,
+		resourceSqlTableUpdateColumnTestMetaData{
+			oldColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "five",
+					Type: "string",
+				},
+			},
+			newColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "three", // new column
+					Type: "string",
+				},
+				{
+					Name: "four", // new column
+					Type: "string",
+				},
+				{
+					Name: "five",
+					Type: "string",
+				},
+			},
+			allowedCommands: []string{
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMN `three` string NOT NULL AFTER two",
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMN `four` string NOT NULL AFTER three",
+			},
+			expectedErrorMsg: "",
+		},
+	)
+}
+
+func TestResourceSqlTableUpdateTable_InsertMultipleColumnsDiffTypesAdd(t *testing.T) {
+	resourceSqlTableUpdateColumnHelper(t,
+		resourceSqlTableUpdateColumnTestMetaData{
+			oldColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "four",
+					Type: "string",
+				},
+			},
+			newColumns: []SqlColumnInfo{
+				{
+					Name: "one",
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "three", // new column
+					Type: "int",
+				},
+				{
+					Name: "four",
+					Type: "string",
+				},
+				{
+					Name: "five", // new column
+					Type: "double",
+				},
+			},
+			allowedCommands: []string{
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMN `three` int NOT NULL AFTER two",
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMN `five` double NOT NULL AFTER four",
+			},
+			expectedErrorMsg: "",
+		},
+	)
+}
+
+// Expecting columns one and four to be dropped and columns three and five to be added, but getting error:
+// "changing the 'type' of an existing column is not supported"
+func TestResourceSqlTableUpdateTable_InsertAndDropColumnsDiffTypes(t *testing.T) {
+	resourceSqlTableUpdateColumnHelper(t,
+		resourceSqlTableUpdateColumnTestMetaData{
+			oldColumns: []SqlColumnInfo{
+				{
+					Name: "one", // will be dropped
+					Type: "string",
+				},
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "four", // will be dropped
+					Type: "string",
+				},
+			},
+			newColumns: []SqlColumnInfo{
+				{
+					Name: "two",
+					Type: "string",
+				},
+				{
+					Name: "three", // new column
+					Type: "int",
+				},
+				{
+					Name: "five", // new column
+					Type: "float",
+				},
+			},
+			allowedCommands: []string{
+				"ALTER TABLE `main`.`foo`.`bar` DROP COLUMN IF EXISTS (`one`, `four`)",
+				"ALTER TABLE `main`.`foo`.`bar` ADD COLUMNS (`three` int, `five` float) AFTER `two`",
+			},
+			expectedErrorMsg: "",
+		},
+	)
+}
+
 func TestResourceSqlTableCreateTable_ExistingSQLWarehouse(t *testing.T) {
 	_, err := qa.ResourceFixture{
 		CommandMock: func(commandStr string) common.CommandResults {
